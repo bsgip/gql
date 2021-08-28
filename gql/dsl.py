@@ -196,7 +196,11 @@ class DSLSchema:
 
     def __getattr__(self, name: str) -> "DSLType":
 
+
         type_def: Optional[GraphQLNamedType] = self._schema.get_type(name)
+
+        if type_def is None and name in ('Query', 'Mutation', 'Subscription'):
+            type_def = self._schema.get_type(name.lower() + '_root')
 
         if type_def is None:
             raise AttributeError(f"Type '{name}' not found in the schema!")
@@ -258,7 +262,9 @@ class DSLOperation(ABC):
                         f"Received type: {type(field)}"
                     )
                 )
-            assert field.type_name.upper() == self.operation_type.name, (
+            # Hasura uses fields like `query_root` rather than query,
+            # so need to check against a shortened name.
+            assert field.type_name.rstrip('_root').upper() == self.operation_type.name, (
                 f"Invalid root field for operation {self.operation_type.name}.\n"
                 f"Received: {field.type_name}"
             )
