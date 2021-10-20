@@ -1,6 +1,7 @@
 import logging
 from abc import ABC
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union, cast
+import json
 
 from graphql import (
     ArgumentNode,
@@ -39,6 +40,9 @@ from graphql import (
     is_non_null_type,
     is_wrapping_type,
     print_ast,
+    GraphQLScalarType, 
+    GraphQLEnumType,
+    IntValueNode
 )
 from graphql.pyutils import FrozenList
 from graphql.utilities import ast_from_value as default_ast_from_value
@@ -104,6 +108,14 @@ def ast_from_value(value: Any, type_: GraphQLInputType) -> Optional[ValueNode]:
             if field_value
         )
         return ObjectValueNode(fields=FrozenList(field_nodes))
+
+    if isinstance(type_, (GraphQLScalarType, GraphQLEnumType)) and isinstance(value, dict):
+        serialized = type_.serialize(value)  # type: ignore
+        if serialized is None or serialized is Undefined:
+            return None
+        
+        val = ', '.join([f"{k}: {json.dumps(v)}" for k, v in serialized.items()])
+        return IntValueNode(value="{" + val + "}")
 
     return default_ast_from_value(value, type_)
 
