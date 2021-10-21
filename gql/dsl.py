@@ -51,6 +51,10 @@ from .utils import to_camel_case
 
 log = logging.getLogger(__name__)
 
+# TODO This should probably be made more explicit,
+# but it appears that representing them this way works fine
+# for storing data at least
+JsonValueNode = IntValueNode
 
 def ast_from_value(value: Any, type_: GraphQLInputType) -> Optional[ValueNode]:
     """
@@ -115,7 +119,13 @@ def ast_from_value(value: Any, type_: GraphQLInputType) -> Optional[ValueNode]:
             return None
         
         val = ', '.join([f"{k}: {json.dumps(v)}" for k, v in serialized.items()])
-        return IntValueNode(value="{" + val + "}")
+        return JsonValueNode(value="{" + val + "}")
+    elif isinstance(type_, (GraphQLScalarType, GraphQLEnumType)) and isinstance(value, list):
+        serialized = type_.serialize(value)  # type: ignore
+        if serialized is None or serialized is Undefined:
+            return None
+        return JsonValueNode(value=json.dumps(serialized))
+
 
     return default_ast_from_value(value, type_)
 
